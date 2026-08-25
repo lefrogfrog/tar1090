@@ -1256,6 +1256,10 @@ function getBaseMarker(category, typeDesignator, typeDescription, wtc, addrtype,
         return ['ground_square', 0.001];
     }
 
+    if (addrtype == 'flarm') {
+        return ['glider', 1];
+    }
+
     if (halloween) {
         if ((typeDescription && typeDescription[0] == 'H') || typeDesignator == 'C172')
             return ['pumpkin', 1];
