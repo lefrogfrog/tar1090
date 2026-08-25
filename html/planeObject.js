@@ -138,6 +138,9 @@ PlaneObject.prototype.setNull = function() {
     this.msgs978   = 0;
     this.messageRate = 0;
     this.messageRateOld = 0;
+
+    this.airline = null;
+    this.airlineKey = null;
 };
 
 function planeCloneState(target, source) {
@@ -2809,8 +2812,34 @@ PlaneObject.prototype.setTypeFlagsReg = function(data) {
         if (this.pia)
             this.registration = null;
     }
-    if (data.r) this.registration = `${data.r}`;
+    if (data.r) {
+        const newRegistration = `${data.r}`;
+        if (newRegistration !== this.registration) {
+            this.registration = newRegistration;
+            this.clearAirlineCache();
+        }
+    }
 }
+
+PlaneObject.prototype.clearAirlineCache = function() {
+    this.airline = null;
+    this.airlineKey = null;
+};
+
+PlaneObject.prototype.getAirline = function() {
+    if (!airlineLookup || !operatorsCache || typeof lookupAirlineForCallsign !== 'function') {
+        return null;
+    }
+    const callsign = this.name || '';
+    const registration = this.registration || '';
+    const key = `${callsign}|${registration}`;
+    if (this.airlineKey === key) {
+        return this.airline;
+    }
+    this.airlineKey = key;
+    this.airline = lookupAirlineForCallsign(callsign, registration);
+    return this.airline;
+};
 
 PlaneObject.prototype.checkForDB = function(data) {
     if (!this.dbinfoLoaded && this.icao >= 'ae6620' && this.icao <= 'ae6899') {
@@ -2894,18 +2923,69 @@ PlaneObject.prototype.setProjection = function(arg) {
     }
 }
 
-function normalized_callsign(flight) {
-    const re = /^([A-Z]*)([0-9]*)([A-Z]*)$/;
-    const match = flight.match(re);
-    if (!match) {
-        return flight;
+// Converts an IATA airline code + flight number to the ICAO code.
+// Returns null if there's no known mapping.
+function iataToIcao(iataCode, numPart) {
+    // LH is the IATA code for both Lufthansa passenger (ICAO DLH) and
+    // Lufthansa Cargo (ICAO GEC). Cargo flights use 4-digit numbers 8000-8999.
+    if (iataCode === 'LH') {
+        if (/^[0-9]{4}$/.test(numPart)) {
+            const n = parseInt(numPart, 10);
+            if (n >= 8000 && n <= 8999) {
+                return 'GEC';
+            }
+        }
+        return 'DLH';
     }
-    let alpha = match[1];
-    let num = match[2];
-    let alpha2 = match[3];
-    while(num[0] == '0' && num.length > 1) {
+
+    if (typeof iata_to_icao !== 'undefined' && iata_to_icao && iata_to_icao[iataCode]) {
+        return iata_to_icao[iataCode];
+    }
+
+    return null;
+}
+
+function normalized_callsign(flight) {
+    // Distinguish ICAO (3 letters) from IATA (2 alphanumeric, or digit+letter)
+    // prefixes so IATA callsigns can be converted to ICAO below.
+    const prefixRe = /^(?:([A-Z]{3})|([A-Z][A-Z0-9])|([0-9][A-Z]))([0-9]+)([A-Z]*)$/;
+    let match = flight.match(prefixRe);
+
+    let alpha, num, alpha2, prefixType;
+    if (match) {
+        if (match[1]) {
+            alpha = match[1];
+            prefixType = 'ICAO';
+        } else {
+            alpha = match[2] || match[3];
+            prefixType = 'IATA';
+        }
+        num = match[4];
+        alpha2 = match[5];
+    } else {
+        // Fallback for callsigns that don't fit the pattern above (e.g. registrations).
+        const re = /^([A-Z]*)([0-9]*)([A-Z]*)$/;
+        match = flight.match(re);
+        if (!match) {
+            return flight;
+        }
+        alpha = match[1];
+        num = match[2];
+        alpha2 = match[3];
+        prefixType = 'unknown';
+    }
+
+    while (num[0] == '0' && num.length > 1) {
         num = num.slice(1);
     }
+
+    if (prefixType === 'IATA') {
+        const icao = iataToIcao(alpha, num);
+        if (icao) {
+            return icao + num + alpha2;
+        }
+    }
+
     return alpha + num + alpha2;
 }
 
@@ -3099,6 +3179,7 @@ function routeDoLookup() {
 }
 
 PlaneObject.prototype.setFlight = function(flight) {
+    const oldName = this.name;
     if (flight == null) {
         if (now - this.flightTs > 10 * 60) {
             this.flight = null;
@@ -3108,9 +3189,18 @@ PlaneObject.prototype.setFlight = function(flight) {
         this.flight = null;
         this.name ='no callsign';
     } else {
-        this.flight = `${flight}`;
-        this.name = this.flight.trim() || 'empty callsign';
+        let trimmed = `${flight}`.trim();
+        if (trimmed) {
+            // Normalize here so the table, map label, and route lookup
+            // (routeCheck() uses this.name) all show the same callsign.
+            trimmed = normalized_callsign(trimmed);
+        }
+        this.flight = trimmed;
+        this.name = trimmed || 'empty callsign';
         this.flightTs = now;
+    }
+    if (this.name !== oldName) {
+        this.clearAirlineCache();
     }
 }
 

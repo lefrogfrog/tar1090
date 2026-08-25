@@ -42,9 +42,15 @@
             <div class="infoHeading"><span>Type code: </span></div>
             <div class="infoData"><span id="highlighted_icaotype">n/a</span></div>
           </div>
+          <div class="rSpacer">
+          </div>
+          <div id="highlighted_airline_row">
+            <!-- <div class="infoHeading"><span>Airline: </span></div> -->
+            <div class="infoHeading"><span id="highlighted_airline">n/a</span></div>
+          </div>
           <div>
-            <div id="routeRowHighlight" class="infoHeading"><span title="Reported flight origin and destination according to adsbdb.com">Route</span>:</div>
-            <div class="infoData"><span id="highlighted_route"></span></div>
+              <div id="routeRowHighlight" class="infoHeading"><span title="Reported flight origin and destination">Route</span>:</div>
+              <div class="infoData"><span id="highlighted_route"></span></div>
           </div>
           <div class="rSpacer">
           </div>
@@ -168,6 +174,14 @@
                   <div class="infoData">
                     <span title="Country of registration" id="selected_country">n/a</span>
                   </div>
+                </td>
+              </tr>
+              <tr id="selected_airline_row" class="hidden">
+                <td>
+                  <div class="infoHeading">
+                    <span title="Airline/Operator name for the active callsign">Airline: </span>
+                  </div>
+                  <div class="infoData"><span id="selected_airline" title="n/a">n/a</span></div>
                 </td>
               </tr>
               <tr>
@@ -881,7 +895,7 @@
                   </div>
                   <div>
                     <span class="largeText navLinks">
-                      <a class="largeText" target="_blank" href="https://opensky-network.org/contribute/become-a-feeder">Feed Data</a>
+                      <a class="largeText" target="_blank" href="https://opensky-network.org/feed">Feed Data</a>
                       <a class="largeText" target="_blank" href="https://discord.gg/RPh89jpVVz">Discord</a>
                       <a class="largeText" target="_blank" href="https://opensky-network.org/about/faq">FAQ</a>
                     </span>
@@ -1102,7 +1116,7 @@
     <script src="libs/zstddec-tar1090-0.0.5.js"></script>
 
     <!-- ol-custom bundling created using https://github.com/wiedehopf/ol-rollup-->
-    <script src="libs/ol-custom-10.7.0.js"></script>
+    <script src="libs/ol-custom-10.9.0.js"></script>
 
     <!-- JS_ANCHOR2 -->
     <script src="early.js"></script>
@@ -1116,6 +1130,7 @@
     <script src="layers.js"></script>
     <script src="geomag2020.js"></script>
     <script src="markers.js"></script>
+    <script src="airlines.js"></script>
 
     <!-- JS_ANCHOR3 -->
     <script>let spriteSrc = 'images/sprites.png';</script>
